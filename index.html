@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Scientific Calculator — Single File</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Small custom styles (Tailwind via CDN used for layout) */
+    .btn { background: rgba(255,255,255,0.06); backdrop-filter: blur(6px); border-radius: 12px; padding: 10px 12px; color: white; font-weight: 600; transition: transform .06s ease, background .12s ease; }
+    .btn:hover{ background: rgba(255,255,255,0.12); }
+    .btn:active{ transform: scale(.98); }
+    .big { font-size: 1.25rem; }
+    canvas#bgCanvas { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+    pre.inline { background: rgba(0,0,0,0.35); padding: 8px; border-radius: 8px; overflow:auto }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-slate-900 to-indigo-900 min-h-screen flex items-center justify-center text-white relative font-sans">
+  <canvas id="bgCanvas"></canvas>
+
+  <main class="relative z-10 w-full max-w-3xl p-6">
+    <div class="mx-auto bg-gradient-to-br from-white/5 to-white/3 rounded-3xl p-6 shadow-2xl backdrop-blur-md border border-white/10">
+      <header class="flex items-center justify-between mb-4">
+        <h1 class="text-2xl font-semibold">Scientific Calculator</h1>
+        <div class="text-sm opacity-80">HTML • Tailwind • JS</div>
+      </header>
+
+      <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- Calculator card -->
+        <div class="md:col-span-2 bg-transparent p-4 rounded-xl">
+          <div id="display" class="w-full bg-black/60 rounded-xl p-3 text-right font-mono text-white big" style="min-height:72px;">
+            <div id="expr" class="text-sm opacity-60 break-words"></div>
+            <div id="out" class="text-2xl font-semibold"></div>
+          </div>
+
+          <div class="mt-4 grid grid-cols-5 gap-2">
+            <!-- row 1 -->
+            <button class="btn" onclick="press('(')">(</button>
+            <button class="btn" onclick="press(')')">)</button>
+            <button class="btn" onclick="press('pi')">π</button>
+            <button class="btn" onclick="press('e')">e</button>
+            <button class="btn" onclick="clearAll()">C</button>
+
+            <!-- row 2 -->
+            <button class="btn" onclick="press('sin(')">sin</button>
+            <button class="btn" onclick="press('cos(')">cos</button>
+            <button class="btn" onclick="press('tan(')">tan</button>
+            <button class="btn" onclick="press('asin(')">asin</button>
+            <button class="btn" onclick="press('acos(')">acos</button>
+
+            <!-- row 3 -->
+            <button class="btn" onclick="press('atan(')">atan</button>
+            <button class="btn" onclick="press('ln(')">ln</button>
+            <button class="btn" onclick="press('log10(')">log</button>
+            <button class="btn" onclick="press('sqrt(')">√</button>
+            <button class="btn" onclick="press('^')">^</button>
+
+            <!-- row 4 -->
+            <button class="btn" onclick="press('7')">7</button>
+            <button class="btn" onclick="press('8')">8</button>
+            <button class="btn" onclick="press('9')">9</button>
+            <button class="btn" onclick="press('/')">÷</button>
+            <button class="btn" onclick="press('%')">%</button>
+
+            <!-- row 5 -->
+            <button class="btn" onclick="press('4')">4</button>
+            <button class="btn" onclick="press('5')">5</button>
+            <button class="btn" onclick="press('6')">6</button>
+            <button class="btn" onclick="press('*')">×</button>
+            <button class="btn" onclick="reciprocal()">1/x</button>
+
+            <!-- row 6 -->
+            <button class="btn" onclick="press('1')">1</button>
+            <button class="btn" onclick="press('2')">2</button>
+            <button class="btn" onclick="press('3')">3</button>
+            <button class="btn" onclick="press('-')">−</button>
+            <button class="btn" onclick="press('!')">!</button>
+
+            <!-- row 7 -->
+            <button class="btn" onclick="press('0')">0</button>
+            <button class="btn" onclick="press('.')">.</button>
+            <button class="btn" onclick="backspace()">⌫</button>
+            <button class="btn" onclick="press('+')">+</button>
+            <button class="btn big" onclick="calc()">=</button>
+          </div>
+        </div>
+
+        <!-- Info & tips card -->
+        <aside class="bg-white/5 p-4 rounded-xl">
+          <h3 class="font-semibold">How to use</h3>
+          <ul class="mt-2 text-sm opacity-80 list-disc list-inside">
+            <li>Click buttons to build expression. Use <code>^</code> for power (e.g. <code>2^3</code>).</li>
+            <li>Trig functions use <strong>radians</strong>. Convert degrees: <code>sin(30*pi/180)</code>.</li>
+            <li><code>!</code> is factorial (on an integer). <code>1/x</code> computes reciprocal of last value.</li>
+            <li>Examples: <code>sqrt(2), ln(5), log10(1000), 5!, 2^10</code>.</li>
+          </ul>
+
+          <div class="mt-4 text-xs opacity-80">
+            Keyboard: numbers, <code>+-*/().%</code>, Enter to evaluate, Backspace to delete.
+          </div>
+        </aside>
+      </section>
+
+      <footer class="mt-4 text-xs opacity-70">Single-file project — ready to submit. Want a downloadable PDF theory report included inside this file?</footer>
+    </div>
+  </main>
+
+  <script>
+    // ---------- Background canvas animation ----------
+    const canvas = document.getElementById('bgCanvas');
+    const ctx = canvas.getContext('2d');
+    function resize(){ canvas.width = innerWidth; canvas.height = innerHeight; }
+    resize(); window.addEventListener('resize', resize);
+    const particles = [];
+    for (let i=0;i<60;i++) particles.push({x:Math.random()*innerWidth,y:Math.random()*innerHeight,vx:(Math.random()-0.5)*0.3, vy:(Math.random()-0.5)*0.3, r: 10+Math.random()*30, a: Math.random()*0.5+0.05});
+    function draw(){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      for (const p of particles){
+        p.x += p.vx; p.y += p.vy;
+        if (p.x < -100) p.x = canvas.width+100; if (p.x>canvas.width+100) p.x=-100;
+        if (p.y < -100) p.y = canvas.height+100; if (p.y>canvas.height+100) p.y=-100;
+        const g = ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r);
+        g.addColorStop(0, 'rgba(255,255,255,'+ (p.a*0.18) +')');
+        g.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+      }
+      requestAnimationFrame(draw);
+    }
+    draw();
+
+    // ---------- Calculator logic (safe-ish evaluator) ----------
+    const exprEl = document.getElementById('expr');
+    const outEl = document.getElementById('out');
+    let expression = '';
+
+    function press(s){
+      expression += s; update();
+    }
+
+    function clearAll(){ expression = ''; update(); }
+    function backspace(){ expression = expression.slice(0,-1); update(); }
+
+    function update(){ exprEl.textContent = expression; try{ outEl.textContent = preview(expression) } catch(e){ outEl.textContent = '' } }
+
+    function calc(){
+      try{ const v = safeEval(expression); outEl.textContent = String(v); } catch(e){ outEl.textContent = 'Error'; }
+    }
+
+    function reciprocal(){
+      // attempt to find the last number or expression and wrap it as 1/(...)
+      const m = expression.match(/(\d+(?:\.\d+)?|\))(?:\s*)$/);
+      if (!m){ expression = '1/(' + expression + ')'; update(); return; }
+      if (m[1] === ')'){
+        // find matching paren
+        let depth = 0; for (let i = expression.length-1; i>=0; i--){ if (expression[i] === ')') depth++; else if (expression[i] === '(') depth--; if (depth===0){ const inside = expression.slice(i); expression = expression.slice(0,i) + '1/(' + inside + ')'; update(); return; } }
+        expression = '1/(' + expression + ')'; update();
+      } else {
+        // number
+        const num = m[1]; expression = expression.slice(0, expression.length - num.length) + '(1/(' + num + '))'; update();
+      }
+    }
+
+    // factorial helper
+    function factorial(n){ n = Math.floor(n); if (n<0) throw 'neg factorial'; let r=1; for (let i=2;i<=n;i++) r*=i; return r; }
+
+    // safeEval: allow a whitelist of functions by building a function with only those names
+    function safeEval(raw){ if (!raw) return '';
+      // token replacements
+      let s = raw.replace(/\^/g, '**')
+                 .replace(/\bpi\b/g,'Math.PI')
+                 .replace(/\be\b/g,'Math.E')
+                 .replace(/(\d+)!/g, 'factorial($1)')
+                 .replace(/\bln\b/g,'Math.log')
+                 .replace(/\blog10\b/g,'Math.log10')
+                 .replace(/\blog\b/g,'Math.log10');
+
+      const allowed = {
+        abs: Math.abs, acos: Math.acos, asin: Math.asin, atan: Math.atan, atan2: Math.atan2,
+        ceil: Math.ceil, cos: Math.cos, exp: Math.exp, floor: Math.floor, log: Math.log, log10: Math.log10,
+        max: Math.max, min: Math.min, pow: Math.pow, random: Math.random, round: Math.round, sin: Math.sin,
+        sinh: Math.sinh || ((x)=> (Math.exp(x)-Math.exp(-x))/2), cosh: Math.cosh || ((x)=> (Math.exp(x)+Math.exp(-x))/2), tan: Math.tan, tanh: Math.tanh || ((x)=> (Math.exp(x)-Math.exp(-x))/(Math.exp(x)+Math.exp(-x))),
+        sqrt: Math.sqrt, factorial: factorial
+      };
+
+      const names = Object.keys(allowed);
+      const vals = Object.values(allowed);
+      const func = new Function(...names, 'return ('+s+');');
+      return func(...vals);
+    }
+
+    // keyboard support
+    window.addEventListener('keydown', (e)=>{
+      if ((e.key >= '0' && e.key <= '9') || '+-*/().%'.includes(e.key)) { expression += e.key; update(); }
+      else if (e.key === 'Enter') calc();
+      else if (e.key === 'Backspace') { expression = expression.slice(0,-1); update(); }
+    });
+
+    // initialize empty
+    update();
+  </script>
+</body>
+</html>
